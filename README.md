@@ -70,10 +70,18 @@ $ docker ps
 CONTAINER ID  IMAGE                 COMMAND                 CREATED             STATUS              PORTS                   NAMES
 6d330adac564  nessus-docker_nessus  "/opt/nessus/sbin/ne…"  About a minute ago  Up About a minute   0.0.0.0:9934->8834/tcp  nessus-docker_nessus_1
 ```
-* Withing container nessusd listens on 8834, exposing usin 9934/tcp on host machine. Using 9934 to overcome port binding issues if someone already installed nessus on their local host.
+* Within the container, nessusd listens on 8834 and is exposed on 127.0.0.1:9934 on the host machine. Using 9934 helps avoid port binding issues if Nessus is already installed locally, and binding to 127.0.0.1 keeps the web UI off the external network by default.
 
 * If the container has successfully started, we can access it from browser using
 https://localhost:9934
+
+* Runtime performance/reliability settings are included in `docker-compose.yaml`:
+  - Nessus data is stored in the `nessus-data` Docker volume so plugin data and setup state survive container recreation.
+  - `/dev/shm` is increased to 1 GB for heavier scans.
+  - A healthcheck verifies that Nessus is accepting connections on port 8834.
+  - Docker log rotation is enabled to avoid unbounded log growth.
+  - `init: true` and a longer stop grace period help Nessus shut down cleanly.
+  - `.dockerignore` keeps local docs, screenshots, Git metadata, and temporary files out of the Docker build context.
 
 - At step 1, create username, password
 

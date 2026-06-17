@@ -1,0 +1,8 @@
+.git
+images
+README.md
+docker-compose.yaml
+*.log
+*.tmp
+*.swp
+*~

@@ -1,7 +1,5 @@
 FROM ubuntu:16.04
 
-# MAINTAINED by Praveen Darshanam <cHJhdmVlbmQuaGFjQGdtYWlsLmNvbQo=>
-
 ENV DEBIAN_FRONTEND=noninteractive
 
 # installs ping, netstat for debugging purposes

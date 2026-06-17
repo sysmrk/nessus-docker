@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+
+wget --spider --quiet http://127.0.0.1/nginx-health
+nc -z -w 5 nessus 8834
+
+if [ "${ENABLE_SSL:-false}" = "true" ]; then
+    wget --spider --quiet --no-check-certificate https://127.0.0.1/nginx-health
+fi

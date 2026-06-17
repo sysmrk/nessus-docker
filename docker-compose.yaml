@@ -1,6 +1,6 @@
 # Nessus Vulnerability Scanner
 
-version: '3.8'
+version: '2.4'
 
 services:
   nessus:
@@ -12,11 +12,11 @@ services:
     expose:
       - 8834
     healthcheck:
-      test: ["CMD-SHELL", "timeout 5 bash -c '</dev/tcp/127.0.0.1/8834'"]
+      test: ["CMD-SHELL", "timeout 5 bash -c '</dev/tcp/127.0.0.1/8834' || exit 1"]
       interval: 30s
       timeout: 10s
-      retries: 5
-      start_period: 3m
+      retries: 10
+      start_period: 5m
     logging:
       driver: json-file
       options:
@@ -27,15 +27,21 @@ services:
     build: nginx
     restart: unless-stopped
     depends_on:
-      - nessus
+      nessus:
+        condition: service_healthy
+    environment:
+      ENABLE_SSL: "false"
+      TLS_CERT_CN: localhost
+      TLS_CERT_DAYS: 3650
     ports:
-      - 127.0.0.1:9934:443
+      - 127.0.0.1:9934:80
+      - 127.0.0.1:9943:443
     healthcheck:
-      test: ["CMD-SHELL", "wget --spider --quiet --no-check-certificate https://127.0.0.1/ || exit 1"]
+      test: ["CMD-SHELL", "/usr/local/bin/nginx-healthcheck"]
       interval: 30s
       timeout: 10s
-      retries: 5
-      start_period: 30s
+      retries: 10
+      start_period: 2m
     logging:
       driver: json-file
       options:

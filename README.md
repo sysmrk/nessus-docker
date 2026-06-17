@@ -1,109 +1,39 @@
+# Nessus Docker
 
-## Latest Nessus Vulnerability Scanner Docker Image
-* Checkout the code using
-```
-$ git clone https://github.com/praveendhac/nessus-docker
-$ cd nessus-docker
-```
+Docker Compose setup for running Tenable Nessus behind an Nginx reverse proxy.
 
-* Execute below commans to build docker image and start nessus Container
-```
-$ docker-compose -f docker-compose.yaml up
-Building nessus
-Step 1/8 : FROM ubuntu:16.04
- ---> 5e8b97a2a082
-Step 2/8 : RUN apt-get update
- ---> Running in a93b7f5900ab
-....snip....
-Fetched 25.3 MB in 2s (8689 kB/s)
-Reading package lists...
-Removing intermediate container a93b7f5900ab
- ---> cadf61d27904
-Step 3/8 : RUN apt-get install -y net-tools iputils-ping tzdata
- ---> Running in 2c59eee34dc3
-....snip....
-Step 4/8 : RUN rm -rf /var/lib/apt/lists/*
- ---> Running in 2ff140212b19
-Removing intermediate container 2ff140212b19
- ---> 9656babec872
-Step 5/8 : COPY Nessus-7.1.1-ubuntu1110_amd64.deb /tmp/Nessus.deb
- ---> 334180e1f817
-Step 6/8 : RUN dpkg -i /tmp/Nessus.deb
- ---> Running in 96f0dd9e9155
-Preparing to unpack /tmp/Nessus.deb ...
-Unpacking nessus (7.1.1) ...
-Setting up nessus (7.1.1) ...
-Unpacking Nessus Core Components...
+## What Runs
 
-# nessus-docker
- - You can start Nessus by typing /etc/init.d/nessusd start
- - Then go to https://96f0dd9e9155:8834/ to configure your scanner
+- `nessus`: official Tenable image, pinned to `tenable/nessus:10.12.0-ubuntu`.
+- `nginx`: local reverse proxy that exposes Nessus on `https://localhost:9934`.
 
-Step 7/8 : EXPOSE 8834
- ---> Running in 39c904011360
-Removing intermediate container 39c904011360
- ---> df52b2233bbe
-Step 8/8 : ENTRYPOINT [ "/opt/nessus/sbin/nessusd" ]
- ---> Running in 8530df768ebb
-Removing intermediate container 8530df768ebb
- ---> 600640e272d5
+Nessus itself only listens on the internal Docker network. The only published port is Nginx on `127.0.0.1:9934`.
 
-Successfully built 600640e272d5
-Successfully tagged nessus-docker_nessus:latest
-WARNING: Image for service nessus was built because it did not already exist. To rebuild this image you must use `docker-compose build` or `docker-compose up --build`.
-Recreating nessus-docker_nessus_1 ... error
+## Run
 
-Recreating 3db3b5f12c7e_nessus-docker_nessus_1 ... done
-Attaching to nessus-docker_nessus_1
-nessus_1  | nessusd (Nessus) 7.1.1 [build M20117] for Linux
-nessus_1  | Copyright (C) 1998 - 2018 Tenable, Inc.
-nessus_1  |
-nessus_1  | Processing the Nessus plugins...
-[##################################################]
-nessus_1  |
-nessus_1  | All plugins loaded (1sec)
+```bash
+docker-compose -f docker-compose.yaml up -d --build
 ```
 
-* Execute below commans to view list of running containers
-```
-$ docker ps
-CONTAINER ID  IMAGE                 COMMAND                 CREATED             STATUS              PORTS                   NAMES
-6d330adac564  nessus-docker_nessus  "/opt/nessus/sbin/ne…"  About a minute ago  Up About a minute   0.0.0.0:9934->8834/tcp  nessus-docker_nessus_1
-```
-* Within the container, nessusd listens on 8834 and is exposed on 127.0.0.1:9934 on the host machine. Using 9934 helps avoid port binding issues if Nessus is already installed locally, and binding to 127.0.0.1 keeps the web UI off the external network by default.
+Then open:
 
-* If the container has successfully started, we can access it from browser using
+```text
 https://localhost:9934
-
-* Runtime performance/reliability settings are included in `docker-compose.yaml`:
-  - Nessus data is stored in the `nessus-data` Docker volume so plugin data and setup state survive container recreation.
-  - `/dev/shm` is increased to 1 GB for heavier scans.
-  - A healthcheck verifies that Nessus is accepting connections on port 8834.
-  - Docker log rotation is enabled to avoid unbounded log growth.
-  - `init: true` and a longer stop grace period help Nessus shut down cleanly.
-  - `.dockerignore` keeps local docs, screenshots, Git metadata, and temporary files out of the Docker build context.
-
-- At step 1, create username, password
-
-![alt text](images/nessus_create_account.png)
-
-- At step 2, generate "Activation Code". (search google for "nessus + activation code")
-
-![alt text](images/nessus_activation.png)
-
-- At step 3, Nessus starts initializing
-
-![alt text](images/nessus_initializing.png)
-
-* We can login to the container using below command (got the id from `docker ps` command)
-```
-$ docker exec -it 6d330adac564 bash
 ```
 
-# To build docker image of different OS
-We need to modify `nessus-scanner/Dockerfile`, nothing to modify in `docker-compose.yaml`
-* Change `FROM` to the OS of your interest (`FROM ubuntu:16.04` to `FROM centos:7`)
-* Change `RUN` commands reflecting the OS, say using yum, apk etc.
-* Download image specific to the OS of interest, place it in `nessus-scanner` directory
-* `RUN` the installation command specific to OS (dpkg, rpm, apk add etc.)
-* Change `ENTRYPOINT` reflecting the path where nessus is installed
+The Nginx container generates a local self-signed TLS certificate at startup, so your browser will show a certificate warning.
+
+## Check Status
+
+```bash
+docker-compose -f docker-compose.yaml ps
+docker-compose -f docker-compose.yaml logs -f
+```
+
+## Notes
+
+- Tenable currently lists Nessus `10.12.0` as the current download release.
+- Tenable provides official Docker images such as `tenable/nessus:<version>-ubuntu` and `latest-ubuntu`.
+- The old bundled `.deb` installer and Ubuntu 16.04 build have been removed.
+- Tenable's Docker documentation notes that Nessus Docker images do not support persistent storage volumes. Plan to use Nessus backup/export workflows before replacing a configured container.
+- `shm_size: 1g`, healthchecks, and Docker log rotation are enabled for more predictable runtime behavior.
